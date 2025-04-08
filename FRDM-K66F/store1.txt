@@ -1,0 +1,81 @@
+#include "mbed.h"
+
+BufferedSerial serial_port(PTC4, PTC3, 115200); // TX, RX
+
+int main() {
+    char c;
+    char buffer[512];
+    int index = 0;
+
+    while (true) {
+        // Check if data is available to read
+        if (serial_port.readable()) {
+            // Read one character at a time
+            if (serial_port.read(&c, 1)) {
+                // If newline received, print full line
+                if (c == '\n') {
+                    buffer[index] = '\0';  // Null terminate
+                    printf("Received: %s\n", buffer);
+                    index = 0; // Reset buffer
+                } else {
+                    // Store character
+                    if (index < sizeof(buffer) - 1) {
+                        buffer[index++] = c;
+                    }
+                }
+            }
+        }
+    }
+}
+
+#include "mbed.h"
+#include <ArduinoJson.h> 
+
+BufferedSerial serial_port(PTC4, PTC3, 115200); // TX, RX
+
+int main() {
+  char c;
+  char buffer[512];
+  int index = 0;
+  JsonDocument doc;
+
+  while (true) {
+    // Check if data is available to read
+    if (serial_port.readable()) {
+      // Read one character at a time
+      if (serial_port.read(&c, 1)) {
+        // If newline received, print full line
+        if (c == '\n') {
+          buffer[index] = '\0'; // Null terminate
+          printf("Received: %s\n", buffer);
+
+          // Deserialize the received JSON string into the document
+          DeserializationError error = deserializeJson(doc, buffer);
+          
+          if (error) {
+            printf("Failed to parse JSON: %s\n", error.c_str());
+          } else {
+            // Successfully deserialized JSON, extract data
+            int parked_count = doc["parked_count"];
+            int empty_count = doc["empty_count"];
+            int total_spots = doc["total_spots"];
+            
+            
+            // Print the extracted values
+            printf("parked_count: %d\n", parked_count);
+            printf("empty_count: %d\n", empty_count);
+            printf("total_spots: %d\n", total_spots);
+          }
+          
+
+          index = 0; // Reset buffer
+        } else {
+          // Store character
+          if (index < sizeof(buffer) - 1) {
+            buffer[index++] = c;
+          }
+        }
+      }
+    }
+  }
+}
