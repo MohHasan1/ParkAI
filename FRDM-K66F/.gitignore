@@ -9,3 +9,4 @@ compile_commands.json
 mbed-os
 arduinojson
 Servo
+mbedlcdi2c

@@ -6,60 +6,71 @@
 #include "parking_info.hpp"
 #include <cstdio>
 
-#define OPEN_ANGLE 80.0f
-#define CLOSE_ANGLE 0.0f
+#define CLOSE_ANGLE 40.0f
+#define OPEN_ANGLE 180.0f
+#define MAX_SERVO_ANGLE 180.0f 
 
 class ParkingGate {
 private:
   Servo gateServo;
   float currentAngle;
 
+  void writeAngle(float angle) {
+    float percent = angle / MAX_SERVO_ANGLE; // normalize to 0.0 - 1.0
+    gateServo.write(percent);
+    currentAngle = angle;
+  }
+
 public:
   ParkingGate(PinName pin) : gateServo(pin), currentAngle(CLOSE_ANGLE) {
-    this->gateServo.write(CLOSE_ANGLE); // Start closed
+    writeAngle(CLOSE_ANGLE); // Start closed
   }
 
   void open() {
-    this->gateServo.write(OPEN_ANGLE);
-    this->currentAngle = OPEN_ANGLE;
+    writeAngle(OPEN_ANGLE);
     printf("Gate opened\n");
   }
 
   void close() {
-    this->gateServo.write(CLOSE_ANGLE);
-    this->currentAngle = CLOSE_ANGLE;
+    writeAngle(CLOSE_ANGLE);
     printf("Gate closed\n");
   }
 
   void scanOpen() {
-    // if (this->currentAngle == OPEN_ANGLE) return;
-
     for (float angle = CLOSE_ANGLE; angle <= OPEN_ANGLE; angle += 5.0f) {
-      this->gateServo.write(angle);
-      this->currentAngle = angle;
+      writeAngle(angle);
       thread_sleep_for(100);
     }
     printf("Gate gradually opened\n");
   }
 
   void scanClose() {
-    // if (this->currentAngle == CLOSE_ANGLE) return;
-
     for (float angle = OPEN_ANGLE; angle >= CLOSE_ANGLE; angle -= 5.0f) {
-      this->gateServo.write(angle);
-      this->currentAngle = angle;
+      writeAngle(angle);
       thread_sleep_for(100);
     }
     printf("Gate gradually closed\n");
   }
 
+  void loop() {
+    for (int i = 0; i < 100; i++) {
+      gateServo = i / MAX_SERVO_ANGLE;
+      thread_sleep_for(100);
+    }
+    for (int i = 100; i > 0; i--) {
+      gateServo = i / 100.0;
+      thread_sleep_for(100);
+    }
+  }
+
   void update(const ParkingInfo &info) {
     printf("Total: %d, Parked: %d\n", info.totalSpots, info.parkedSpots);
-    printf("Empty-indices: %d", info.empty_indices.size());
+    printf("Empty-indices: %d\n", (int)info.empty_indices.size());
+
     if (info.empty_indices.size() == 0) {
-      this->close();
+      close();
     } else {
-      this->open();
+      open();
     }
   }
 };

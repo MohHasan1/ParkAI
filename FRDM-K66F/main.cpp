@@ -1,6 +1,8 @@
 #include "mbed.h"
-#include "mock_esp32_cam.hpp"
+// #include "mock_esp32_cam.hpp"
+#include "error_indicator.hpp"
 #include "park_info_parser.hpp"
+#include "parking_display.hpp"
 #include "parking_gate.hpp"
 #include "parking_indicator.hpp"
 #include "uart_handler.hpp"
@@ -9,41 +11,60 @@ int main() {
   UartHandler uart(D1, D0); // esp32cam uart
   //   MockESP32CAM uart; // mocks esp32cam uart
 
-  ParkingIndicator indicator({D2, D3, D4, D5});
-  ParkingGate gate(D6);
+  ParkingIndicator indicator({D2, D3, D4, D5, D6, D7});
+  ParkingGate gate(D8);
+  ParkingDisplay display(D14, D15);
+  //   ErrorIndicator error(D11);
 
   // TODO: start sequence action function
+  printf("Debug: Init. modules.\n");
 
-  //   uart.startSignalThread();
-
+//   error.blinkError(10, 1000ms);
+  gate.open();
   ThisThread::sleep_for(1000ms);
+  indicator.turnAllOff();
+  gate.close();
+  ThisThread::sleep_for(1000ms);
+  gate.open();
+  indicator.turnAllOn();
+  ThisThread::sleep_for(1000ms);
+  indicator.turnAllOff();
+  gate.close();
+  ThisThread::sleep_for(1000ms);
+  gate.open();
+  indicator.turnAllOn();
+  ThisThread::sleep_for(1000ms);
+
   while (true) {
-    printf("Sending data to UART...\n");
+    // error.clearError();
+
+    printf("Debug: Sending data via UART...\n");
     bool isOk = uart.sendData("send");
     if (!isOk) {
       printf("Error: Can't send data via UART.\n");
+    //   error.signalError();
       continue;
     }
 
-    ThisThread::sleep_for(1000ms);
-
-    bool isSuccess = uart.readData();
+    bool isSuccess = uart.readDataWithTimeout(6000);
     if (!isSuccess) {
       printf("Error: Can't read UART data or No new Data.\n");
+    //   error.signalError();
       continue;
     }
 
     std::string data = uart.getStoredData();
-    printf("Received data: %s\n", data.c_str());
+    printf("Debug: Received data: %s\n", data.c_str());
 
     ParkInfoParser parser(data);
     bool isparsed = parser.parseRawData();
     if (!isparsed) {
       printf("Error: Can't parse data.\n");
+    //   error.signalError();
       continue;
     }
 
-    printf("Parsed parking info:\n");
+    printf("Debug: Parsed parking info:\n");
     parser.printParsedResult();
 
     // Update the periphirals:
@@ -56,6 +77,6 @@ int main() {
     gate.update(info);
 
     // update lcd
-    // screen.update(info);
+    display.update(info);
   }
 }
