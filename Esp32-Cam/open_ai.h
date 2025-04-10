@@ -14,7 +14,7 @@ private:
 
 public:
   OpenAI() {
-    this->openai_api_key = "..";
+    this->openai_api_key = "";
     this->openai_endpoint = "https://api.openai.com/v1/chat/completions";
     this->prompt = "";
   }

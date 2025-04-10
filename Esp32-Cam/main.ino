@@ -13,6 +13,7 @@ void setup() {
   Serial.begin(115200);
 
   // Connect to the internet:
+  Serial.println("Debug: Connecting to Internet.");
   bool netRes = internet.connect();
   if (!netRes) {
     sendErrorPayload("Internet connection failed");
@@ -20,6 +21,7 @@ void setup() {
   }
 
   // Initialize ESP32CAM:
+  Serial.println("Debug: Init. the camera.");
   bool espRes = esp32cam.init();
   if (!espRes) {
     sendErrorPayload("Camera initialization failed");
@@ -27,19 +29,28 @@ void setup() {
   }
 
   // Start the camera thread - core1:
+  Serial.println("Debug: Starting capturing thread.");
   esp32cam.startContinuousCaptureTask(&shared);
+
+  Serial.println("Debug: Starting Main thread.");
 }
 
 void loop() {
-  // if (!Serial.available()) return;
+  unsigned long start = millis();
+  String signal = "";
 
-  // String command = Serial.readStringUntil('\n');
-  // command.trim();
+  // Wait until data is available or timeout occurs
+  while (!Serial.available()) {
+    if (millis() - start > 5000) {
+      return;
+    }
+    delay(10);
+  }
 
-  // if (command != "send") return;
-
-  // delay(2000);  // mock
-  delay(1000);
+  // Read the signal
+  signal = Serial.readStringUntil('\n');
+  signal.trim();
+  if (signal != "send") return;
 
   // 1. Read base64 image from the shared resource:
   String base64 = shared.read();
@@ -53,7 +64,9 @@ void loop() {
   internet.setHeaders({ { "Content-Type", "application/json" } });
 
   String res = internet.POST("http://172.20.10.2:5050/process", httpPayload);
-  if (res == "error") {
+  JsonDocument resDoc;
+  JsonHandler::deserializeJsonStringAndReturn(res, resDoc);
+  if (!resDoc["status"]) {
     sendErrorPayload("Failed to get a valid response from ParkAI model");
     return;
   }
